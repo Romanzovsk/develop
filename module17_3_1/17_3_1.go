@@ -6,30 +6,41 @@ import (
 	"sync/atomic"
 )
 
-// Шаг наращивания счётчика
+// Целевое значение счётчика
+const targetCounterValue int64 = 1000
+
+// Размер шага каждого прироста
 const step int64 = 1
 
-// Конечное значение счетчика
-const endCounterValue int64 = 10
+// Число работающих горутин
+const numWorkers = 10
 
 func main() {
-
 	var counter int64 = 0
 	var wg sync.WaitGroup
-	increment := func() {
+
+	// Вычисляем необходимое количество шагов каждой горутиной
+	iterationsPerWorker := targetCounterValue / step / int64(numWorkers)
+
+	// Функционал рабочей горутины
+	increment := func(workerID int) {
 		defer wg.Done()
-		atomic.AddInt64(&counter, step)
+
+		// Каждая горутина увеличивает счётчик указанное число раз
+		for j := 0; j < int(iterationsPerWorker); j++ {
+			atomic.AddInt64(&counter, step)
+		}
 	}
-	// Не всегда вычисление этой переменной будет приводить к верному
-	// результату в счётчике, но для правильных значений
-	// и для удобства - можно
-	var iterationCount int = int(endCounterValue / step)
-	for i := 1; i <= iterationCount; i++ {
+
+	// Запускаем нужное количество горутин
+	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
-		go increment()
+		go increment(i + 1)
 	}
-	// Ожидаем поступления сигнала
+
+	// Ждем завершение всех горутин
 	wg.Wait()
-	// Печатаем результат, надеясь, что будет 1000
-	fmt.Println(counter)
+
+	// Выводим итоговое значение счётчика
+	fmt.Println("Финальное значение:", counter)
 }
